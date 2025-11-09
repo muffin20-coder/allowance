@@ -1,4 +1,3 @@
-
 """Allowance planning toolkit."""
 
 from .planner import AllowancePlan, AllowanceLedger, load_ledger

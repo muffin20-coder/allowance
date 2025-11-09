@@ -1,0 +1,18 @@
+README.md
+pyproject.toml
+allowance/__init__.py
+allowance/__main__.py
+allowance/cli.py
+allowance/models.py
+allowance/planner.py
+allowance/storage.py
+allowance.egg-info/PKG-INFO
+allowance.egg-info/PKG-INFO 2
+allowance.egg-info/SOURCES.txt
+allowance.egg-info/dependency_links 2.txt
+allowance.egg-info/dependency_links.txt
+allowance.egg-info/entry_points 2.txt
+allowance.egg-info/entry_points.txt
+allowance.egg-info/top_level 2.txt
+allowance.egg-info/top_level.txt
+tests/test_planner.py
