@@ -1,37 +1,66 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Allowance — UI</title>
+  <title>용돈 관리 보드</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* 인쇄 친화 테이블 전용 스타일 */
+    .print-sheet{max-width:calc(1200px - 30mm);width:100%;margin:32px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+    .print-sheet h1{margin:0 0 6px;font-size:20px}
+    .print-sheet .header-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    .print-sheet p.lead{margin:0;color:#374151;flex:1}
+    .print-sheet table{width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:fixed}
+    .print-sheet table col.date-col{width:25mm}
+    .print-sheet table col.desc-col{width:calc(20% + 35mm)}
+    .print-sheet table col.income-col{width:calc(14% - 10mm)}
+    .print-sheet table col.expense-col{width:calc(14% - 10mm)}
+    .print-sheet table col.balance-col{width:calc(14% - 10mm)}
+    .print-sheet table col.memo-col{width:calc(18% + 45mm)}
+    .print-sheet table tfoot{background:#f8fafc;font-weight:600}
+    .print-sheet table th.date-cell,
+    .print-sheet table td.date-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .print-sheet th,.print-sheet td{border:1px solid #d1d5db;padding:10px;text-align:center}
+    .print-sheet th{background:#f8fafc}
+    .print-sheet td.left{text-align:left}
+    .print-sheet .controls{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:-8px 0 12px}
+    .print-sheet .btn{padding:8px 10px;border-radius:8px;border:0;background:#2b7cff;color:#fff;cursor:pointer}
+    .print-sheet .btn.ghost{background:#f3f4f6;color:#111;border:1px solid #e6e9ef}
+    @media print{
+      body{padding:0}
+      .app,.print-sheet .controls{display:none}
+      .print-sheet{box-shadow:none;border-radius:0;margin:0}
+    }
+  </style>
 </head>
 <body>
   <div class="app">
     <header class="app-header">
       <h1>용돈 기입장</h1>
-      <p class="subtitle">수입과 지출 분석</p>
+      <p class="subtitle">수입과 지출 기록</p>
     </header>
 
     <main class="container">
       <section class="balance-card">
         <h2>잔액</h2>
-        <div id="balance" class="balance-amount">$0.00</div>
+        <div id="balance" class="balance-amount">₩0</div>
         <div class="summary">
-          <div><small>수입</small><div id="income" class="income-amt">$0.00</div></div>
-          <div><small>지출</small><div id="expense" class="expense-amt">$0.00</div></div>
+          <div><small>수입</small><div id="income" class="income-amt">₩0</div></div>
+          <div><small>지출</small><div id="expense" class="expense-amt">₩0</div></div>
         </div>
       </section>
 
       <section class="tx-panel">
         <form id="tx-form" class="tx-form">
-          <select id="tx-type" aria-label="type">
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
+          <select id="tx-type" aria-label="유형">
+            <option value="income">수입</option>
+            <option value="expense">지출</option>
           </select>
-          <input id="tx-desc" type="text" placeholder="Description" required />
-          <input id="tx-amt" type="number" step="0.01" placeholder="Amount" required />
-          <button type="submit">Add</button>
+          <input id="tx-desc" type="text" placeholder="내용" required />
+          <input id="tx-amt" type="number" step="0.01" placeholder="금액" required />
+          <input id="tx-date" type="date" aria-label="날짜" required />
+          <button type="submit" class="tx-submit">추가</button>
         </form>
 
         <h3>내용</h3>
@@ -40,10 +69,58 @@
     </main>
   </div>
 
+  <section class="print-sheet" aria-label="주간 용돈 기록표">
+    <header>
+      <h1>주간 용돈 기록표</h1>
+      <div class="header-row">
+        <p class="lead">일주일 동안 용돈 계획과 실제 사용 내역을 정리할 수 있는 표입니다. 필요시 인쇄하세요.</p>
+        <button id="print" class="btn ghost">인쇄</button>
+      </div>
+    </header>
+
+    <table id="allowance-table">
+      <colgroup>
+        <col class="date-col">
+        <col class="desc-col">
+        <col class="memo-col">
+        <col class="income-col">
+        <col class="expense-col">
+        <col class="balance-col">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="date-cell">날짜</th>
+          <th>내용</th>
+          <th>수입(₩)</th>
+          <th>지출(₩)</th>
+          <th>남은 돈(₩)</th>
+          <th>메모(추가 기록)</th>
+        </tr>
+      </thead>
+      <tbody id="log-body">
+        <tr><td colspan="6" class="empty">아직 기록이 없습니다. 위 폼의 내용을 추가하면 여기에 반영됩니다.</td></tr>
+      </tbody>
+      <tfoot id="log-footer">
+        <tr>
+          <td></td>
+          <td class="left">합계</td>
+          <td>₩0</td>
+          <td>₩0</td>
+          <td>₩0</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+
+  </section>
+
   <script>
     // Simple UI-only logic using localStorage so the page "shows the program"
     const STORAGE_KEY = 'allowance.transactions';
     const $ = id => document.getElementById(id);
+    const today = new Date().toISOString().slice(0, 10);
+    const dateField = $('tx-date');
+    if (dateField) dateField.value = today;
 
     function load() {
       try {
@@ -58,7 +135,26 @@
     }
 
     function format(n) {
-      return n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+      return n.toLocaleString('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
+    }
+
+    function formatDate(value) {
+      const date = new Date(value);
+      return date.toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
+    }
+
+    function syncPanelHeight() {
+      const balanceCard = document.querySelector('.balance-card');
+      const txPanel = document.querySelector('.tx-panel');
+      if (!balanceCard || !txPanel) return;
+      if (window.matchMedia('(max-width: 800px)').matches) {
+        txPanel.style.height = "";
+        txPanel.style.maxHeight = "";
+        return;
+      }
+      const height = balanceCard.offsetHeight;
+      txPanel.style.height = `${height}px`;
+      txPanel.style.maxHeight = `${height}px`;
     }
 
     function render() {
@@ -72,7 +168,10 @@
         li.innerHTML = `
           <div class="tx-main">
             <div class="tx-desc">${escapeHtml(t.desc)}</div>
-            <div class="tx-meta"><small>${new Date(t.date).toLocaleString()}</small></div>
+            <div class="tx-meta">
+              <small>${new Date(t.date).toLocaleString()}</small>
+              ${t.memo ? `<span class="tx-memo">메모: ${escapeHtml(t.memo)}</span>` : ""}
+            </div>
           </div>
           <div class="tx-amt">${t.type === 'income' ? '+' : '-'}${format(Math.abs(t.amount))}</div>
           <button class="tx-del" data-i="${i}" title="Delete">✕</button>
@@ -87,7 +186,9 @@
       $('income').textContent = format(income);
       $('expense').textContent = format(expense);
 
-      // attach delete handlers
+      renderTable(items);
+      syncPanelHeight();
+
       list.querySelectorAll('.tx-del').forEach(btn => {
         btn.onclick = () => {
           const idx = Number(btn.dataset.i);
@@ -102,29 +203,106 @@
       return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[s]));
     }
 
+    function renderTable(items) {
+      const tableBody = document.getElementById('log-body');
+      const footer = document.getElementById('log-footer');
+      if (!tableBody || !footer) return;
+      tableBody.innerHTML = '';
+      const chronological = [...items].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      if (!chronological.length) {
+        const empty = document.createElement('tr');
+        empty.innerHTML = '<td colspan="6" class="empty">아직 기록이 없습니다. 위 폼의 내용을 추가하면 여기에 반영됩니다.</td>';
+        tableBody.appendChild(empty);
+        footer.innerHTML = `
+          <tr>
+            <td></td>
+            <td class="left">합계</td>
+            <td>₩0</td>
+            <td>₩0</td>
+            <td>₩0</td>
+            <td></td>
+          </tr>`;
+        return;
+      }
+
+      let running = 0;
+      let totalIncome = 0;
+      let totalExpense = 0;
+      chronological.forEach(txn => {
+        running += txn.amount;
+        const tr = document.createElement('tr');
+        const isIncome = txn.type === 'income';
+        if (isIncome) totalIncome += txn.amount;
+        else totalExpense += Math.abs(txn.amount);
+        const originalIndex = items.indexOf(txn);
+        tr.innerHTML = `
+          <td class="date-cell">${formatDate(txn.date)}</td>
+          <td class="left">${escapeHtml(txn.desc)}</td>
+          <td>${isIncome ? format(Math.abs(txn.amount)) : ''}</td>
+          <td>${!isIncome ? format(Math.abs(txn.amount)) : ''}</td>
+          <td>${format(running)}</td>
+          <td class="memo-cell" contenteditable="true" data-index="${originalIndex}"></td>
+        `;
+        tableBody.appendChild(tr);
+        const memoCell = tr.querySelector('.memo-cell');
+        memoCell.textContent = txn.memo || '';
+        memoCell.addEventListener('input', () => {
+          const idx = Number(memoCell.dataset.index);
+          items[idx].memo = memoCell.textContent.trim();
+          save(items);
+        });
+      });
+
+      footer.innerHTML = `
+        <tr>
+          <td></td>
+          <td class="left">합계</td>
+          <td>${format(totalIncome)}</td>
+          <td>${format(totalExpense)}</td>
+          <td>${format(running)}</td>
+          <td></td>
+        </tr>`;
+    }
+
     document.getElementById('tx-form').addEventListener('submit', e => {
       e.preventDefault();
       const type = $('tx-type').value;
       const desc = $('tx-desc').value.trim();
       const amt = parseFloat($('tx-amt').value);
+      const dateInput = $('tx-date').value;
       if (!desc || !isFinite(amt)) return;
+      const txnDate = dateInput ? new Date(`${dateInput}T00:00:00`) : new Date();
       const items = load();
-      items.unshift({ type, desc, amount: type === 'income' ? Math.abs(amt) : -Math.abs(amt), date: new Date().toISOString() });
+      items.unshift({
+        type,
+        desc,
+        amount: type === 'income' ? Math.abs(amt) : -Math.abs(amt),
+        memo: '',
+        date: txnDate.toISOString(),
+      });
       save(items);
       $('tx-desc').value = '';
       $('tx-amt').value = '';
+      if (!dateInput && dateField) dateField.value = today;
       render();
     });
 
-    // seed demo if empty
     if (load().length === 0) {
       save([
-        { type: 'income', desc: 'Weekly allowance', amount: 10, date: new Date().toISOString() },
-        { type: 'expense', desc: 'Toy', amount: -4.5, date: new Date().toISOString() }
+        { type: 'income', desc: '주간 용돈', amount: 10000, memo: '', date: new Date().toISOString() },
+        { type: 'expense', desc: '장난감', amount: -4500, memo: '', date: new Date().toISOString() }
       ]);
     }
 
     render();
+    window.addEventListener('resize', syncPanelHeight);
+  </script>
+
+  <script>
+    // 인쇄 단추
+    document.getElementById('print').addEventListener('click', () => window.print());
   </script>
 </body>
 </html>

@@ -51,3 +51,24 @@ allowance reset --everything
 
 The program stores its data in `~/.allowance.json` by default. Use the
 `--storage` flag with any command to change the location of the data file.
+
+## Contributor Guide
+
+New contributors should review `AGENTS.md` for repository structure, coding
+style, testing expectations, and pull request conventions before opening
+changes.
+
+## Web UI Smoke Test
+
+The static UI under `allowance/web/` now has an automated regression in
+`tests/test_web_ui.py` that relies on Playwright.
+
+```bash
+pip install pytest playwright
+playwright install
+pytest tests/test_web_ui.py -k web_ui
+```
+
+The test starts a lightweight HTTP server, verifies that memo edits persist
+after a reload, and checks that footer totals update when new transactions are
+recorded.
