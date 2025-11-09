@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Allowance — UI</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>용돈 기입장</h1>
+      <p class="subtitle">수입과 지출 분석</p>
+    </header>
+
+    <main class="container">
+      <section class="balance-card">
+        <h2>잔액</h2>
+        <div id="balance" class="balance-amount">$0.00</div>
+        <div class="summary">
+          <div><small>수입</small><div id="income" class="income-amt">$0.00</div></div>
+          <div><small>지출</small><div id="expense" class="expense-amt">$0.00</div></div>
+        </div>
+      </section>
+
+      <section class="tx-panel">
+        <form id="tx-form" class="tx-form">
+          <select id="tx-type" aria-label="type">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+          <input id="tx-desc" type="text" placeholder="Description" required />
+          <input id="tx-amt" type="number" step="0.01" placeholder="Amount" required />
+          <button type="submit">Add</button>
+        </form>
+
+        <h3>내용</h3>
+        <ul id="tx-list" class="tx-list" aria-live="polite"></ul>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Simple UI-only logic using localStorage so the page "shows the program"
+    const STORAGE_KEY = 'allowance.transactions';
+    const $ = id => document.getElementById(id);
+
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function save(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function format(n) {
+      return n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+    }
+
+    function render() {
+      const items = load();
+      const list = $('tx-list');
+      list.innerHTML = '';
+      let income = 0, expense = 0;
+      items.forEach((t, i) => {
+        const li = document.createElement('li');
+        li.className = 'tx-item ' + t.type;
+        li.innerHTML = `
+          <div class="tx-main">
+            <div class="tx-desc">${escapeHtml(t.desc)}</div>
+            <div class="tx-meta"><small>${new Date(t.date).toLocaleString()}</small></div>
+          </div>
+          <div class="tx-amt">${t.type === 'income' ? '+' : '-'}${format(Math.abs(t.amount))}</div>
+          <button class="tx-del" data-i="${i}" title="Delete">✕</button>
+        `;
+        list.appendChild(li);
+        if (t.type === 'income') income += t.amount;
+        else expense += Math.abs(t.amount);
+      });
+
+      const balance = income - expense;
+      $('balance').textContent = format(balance);
+      $('income').textContent = format(income);
+      $('expense').textContent = format(expense);
+
+      // attach delete handlers
+      list.querySelectorAll('.tx-del').forEach(btn => {
+        btn.onclick = () => {
+          const idx = Number(btn.dataset.i);
+          items.splice(idx, 1);
+          save(items);
+          render();
+        };
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[s]));
+    }
+
+    document.getElementById('tx-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const type = $('tx-type').value;
+      const desc = $('tx-desc').value.trim();
+      const amt = parseFloat($('tx-amt').value);
+      if (!desc || !isFinite(amt)) return;
+      const items = load();
+      items.unshift({ type, desc, amount: type === 'income' ? Math.abs(amt) : -Math.abs(amt), date: new Date().toISOString() });
+      save(items);
+      $('tx-desc').value = '';
+      $('tx-amt').value = '';
+      render();
+    });
+
+    // seed demo if empty
+    if (load().length === 0) {
+      save([
+        { type: 'income', desc: 'Weekly allowance', amount: 10, date: new Date().toISOString() },
+        { type: 'expense', desc: 'Toy', amount: -4.5, date: new Date().toISOString() }
+      ]);
+    }
+
+    render();
+  </script>
+</body>
+</html>
